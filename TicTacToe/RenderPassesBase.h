@@ -1,0 +1,10 @@
+#pragma once
+#include "BasePass.h"
+#include "BindingPass.h"
+#include "FullscreenPass.h"
+#include "QueuePass.h"
+#include "SinkContainerBindable.h"
+#include "SinkDirectBindable.h"
+#include "SinkDirectBuffer.h"
+#include "SourceDirectBindable.h"
+#include "SourceDirectBuffer.h"

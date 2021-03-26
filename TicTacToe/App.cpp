@@ -3,24 +3,151 @@
 #include "DialogWindow.h"
 #include "Math.h"
 
+inline bool App::IsSameOwner(uint8_t f1, uint8_t f2, uint8_t f3) noexcept
+{
+	const Field::Possesion ownerF2 = fields.at(f2).GetOwner();
+	if (fields.at(f1).GetOwner() == ownerF2 && ownerF2 == fields.at(f3).GetOwner())
+	{
+		fields.at(f1).SetWinner();
+		fields.at(f2).SetWinner();
+		fields.at(f3).SetWinner();
+		return true;
+	}
+	return false;
+}
+
+inline bool App::CheckVictory(uint8_t index) noexcept
+{
+	uint8_t checkAxis = 0;
+	switch (index)
+	{
+	case 0: // Left Down
+	{
+		checkAxis = Axis::Left | Axis::Down | Axis::LeftDownToUpRight;
+		break;
+	}
+	case 1: // Center Down
+	{
+		checkAxis = Axis::Horizontal | Axis::Down;
+		break;
+	}
+	case 2: // Rright Down
+	{
+		checkAxis = Axis::Down | Axis::Right | Axis::LeftUpToDownRight;
+		break;
+	}
+	case 3: // Left Middle
+	{
+		checkAxis = Axis::Left | Axis::Vertical;
+		break;
+	}
+	case 4: // Center Middle
+	{
+		checkAxis = Axis::Horizontal | Axis::Vertical | Axis::LeftUpToDownRight | Axis::LeftDownToUpRight;
+		break;
+	}
+	case 5: // Right Middle
+	{
+		checkAxis = Axis::Right | Axis::Vertical;
+		break;
+	}
+	case 6: // Left Up
+	{
+		checkAxis = Axis::Left | Axis::Up | Axis::LeftUpToDownRight;
+		break;
+	}
+	case 7: // Center Up
+	{
+		checkAxis = Axis::Horizontal | Axis::Up;
+		break;
+	}
+	case 8: // Right Up
+	{
+		checkAxis = Axis::Right | Axis::Up | Axis::LeftDownToUpRight;
+		break;
+	}
+	default:
+		return false;
+	}
+	if (checkAxis & Axis::Left)
+		if (IsSameOwner(0, 3, 6))
+			return true;
+	if (checkAxis & Axis::Horizontal)
+		if (IsSameOwner(1, 4, 7))
+			return true;
+	if (checkAxis & Axis::Right)
+		if (IsSameOwner(2, 5, 8))
+			return true;
+	if (checkAxis & Axis::Down)
+		if (IsSameOwner(0, 1, 2))
+			return true;
+	if (checkAxis & Axis::Vertical)
+		if (IsSameOwner(3, 4, 5))
+			return true;
+	if (checkAxis & Axis::Up)
+		if (IsSameOwner(6, 7, 8))
+			return true;
+	if (checkAxis & Axis::LeftUpToDownRight)
+		if (IsSameOwner(2, 4, 6))
+			return true;
+	if (checkAxis & Axis::LeftDownToUpRight)
+		if (IsSameOwner(0, 4, 8))
+			return true;
+	return false;
+}
+
 inline void App::ProcessInput()
 {
-	while (window.Keyboard().IsKeyReady())
+	if (play)
 	{
-		if (auto opt = window.Keyboard().ReadKey())
+		while (window.Mouse().IsInput())
 		{
-			if (opt.value().IsDown())
+			if (auto e = window.Mouse().Read())
 			{
-				switch (opt.value().GetCode())
+				switch (e->GetType())
 				{
-				case VK_ESCAPE:
+				case WinAPI::Mouse::Event::Type::Move:
+				case WinAPI::Mouse::Event::Type::LeftUp:
+				case WinAPI::Mouse::Event::Type::LeftDown:
 				{
-					window.SwitchCursor();
-					break;
-				}
-				case VK_F1:
-				{
-					window.Gfx().SwitchGUI();
+					for (uint8_t i = 0; i < 9; ++i)
+					{
+						auto& field = fields.at(i);
+						if (field.MouseHoover(e->GetX(), e->GetY()))
+						{
+							if (e->GetType() == WinAPI::Mouse::Event::Type::LeftUp)
+							{
+								field.SetFront();
+								field.SetOwner(window.Gfx(), currentPlayer);
+								--fieldsLeft;
+								currentPlayer = currentPlayer == Field::Possesion::P1
+									? Field::Possesion::P2 : Field::Possesion::P1;
+								if (CheckVictory(i))
+								{
+									play = false;
+									gameLog += "Player ";
+									gameLog += currentPlayer == Field::Possesion::P1 ? "1" : "2";
+									gameLog += " won! ";
+									gameLog += std::to_string(static_cast<size_t>(time));
+									gameLog += "s\n";
+									break;
+								}
+								if (fieldsLeft == 0)
+								{
+									fieldsLeft = -1;
+									play = false;
+									gameLog += "Draw! ";
+									gameLog += std::to_string(static_cast<size_t>(time));
+									gameLog += "s\n";
+									break;
+								}
+							}
+							else if (e->IsLeftDown())
+								field.SetBack();
+						}
+						else
+							field.SetFront();
+					}
 					break;
 				}
 				}
@@ -29,61 +156,53 @@ inline void App::ProcessInput()
 	}
 }
 
-inline void App::ShowObjectWindow()
+inline void App::ShowWindow()
 {
-	static GFX::Probe::BaseProbe probe;
-	if (ImGui::Begin("Objects", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar))
+	if (ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar))
 	{
-		static std::vector<std::shared_ptr<GFX::Shape::Rectangle>>::iterator currentItem = fields.begin();
-		if (ImGui::BeginCombo("Selected object", (*currentItem)->GetName().c_str()))
-		{
-			for (auto it = fields.begin(); it != fields.end(); ++it)
-			{
-				bool selected = (currentItem == it);
-				if (ImGui::Selectable((*it)->GetName().c_str(), selected))
-				{
-					(*currentItem)->DisableOutline();
-					currentItem = it;
-					(*currentItem)->SetOutline();
-				}
-				if (selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-		ChangeImageButton();
 		ImGui::NewLine();
-		(*currentItem)->Accept(window.Gfx(), probe);
-	}
-	ImGui::End();
-}
-
-inline void App::ShowOptionsWindow()
-{
-	static GFX::Probe::BaseProbe probe;
-	if (ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
-	{
-		if (ImGui::Button("Exit"))
+		ImGui::Text("Game time: %.0fs", time);
+		ImGui::NewLine();
+		ImGui::NewLine();
+		if (fieldsLeft != -1)
+			ImGui::Text("Player %s %s", currentPlayer == Field::Possesion::P1 ? "1" : "2", play ? "turn" : "won!!!");
+		else
+			ImGui::Text("Draw! Game over!");
+		ImGui::NewLine();
+		if (ImGui::Button("Exit Game"))
 			run = false;
 		ImGui::SameLine();
-		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-		renderer.ShowWindow(window.Gfx());
+		if (ImGui::Button("Reset"))
+			ResetGame();
+		ImGui::NewLine();
+		ImGui::NewLine();
+		ImGui::Text("Change image:");
+		ChangeImageButton(Field::Possesion::P1);
+		ChangeImageButton(Field::Possesion::P2);
+		ImGui::NewLine();
+		ImGui::InputTextMultiline("##log", gameLog.data(), gameLog.size(), { -FLT_MIN, -FLT_MIN }, ImGuiInputTextFlags_ReadOnly);
 	}
 	ImGui::End();
 }
 
-inline void App::ChangeImageButton()
+inline void App::ChangeImageButton(Field::Possesion owner)
 {
 	static std::optional<std::string> path = {};
 	static std::optional<std::string> error = {};
+	static std::string title = "Player X";
 
-	if (const auto file = GFX::GUI::DialogWindow::FileBrowserButton("Change image", ""))
+	title.back() = owner == Field::Possesion::P1 ? '1' : '2';
+	if (const auto file = GFX::GUI::DialogWindow::FileBrowserButton(title, ""))
 		path = file;
 	if (path)
 	{
 		try
 		{
-			//error = renderer.ChangeSkybox(window.Gfx(), path.value());
+			Field::SetPlayerImage(owner, std::move(path.value()));
+			for (auto& field : fields)
+				if (field.GetOwner() == owner)
+					field.ReloadImage(window.Gfx());
 		}
 		catch (const std::exception& e)
 		{
@@ -103,41 +222,51 @@ void App::MakeFrame()
 {
 	window.Gfx().BeginFrame();
 	ProcessInput();
-	ShowObjectWindow();
-	ShowOptionsWindow();
-	for (auto& rect : fields)
-		rect->Submit();
+	ShowWindow();
+	for (auto& field : fields)
+		field.Submit();
 	renderer.Execute(window.Gfx());
 	renderer.Reset();
 	window.Gfx().EndFrame();
 }
 
-App::App(const std::string& commandLine)
-	: window(1600, 900, WINDOW_TITLE), renderer(window.Gfx(), 16.2f)
+inline void App::ResetGame()
 {
-	window.Gfx().Gui().SetFont("Arial.ttf", 14.0f);
+	play = true;
+	time = 0.0f;
+	fieldsLeft = 9;
+	for (auto& field : fields)
+		field.Reset(window.Gfx());
+	currentPlayer = currentPlayer == Field::Possesion::P1
+		? Field::Possesion::P2 : Field::Possesion::P1;
+	window.Mouse().Flush();
+	timer.Mark();
+}
+
+App::App(const std::string& commandLine)
+	: window(1200, 900, WINDOW_TITLE), renderer(window.Gfx(), 16.2f)
+{
+	window.Gfx().Gui().SetFont("Arial.ttf", 30.0f);
 	window.Gfx().SetProjection(DirectX::XMMatrixPerspectiveFovLH(1.047f, window.Gfx().GetRatio(), 0.01f, 500.0f));
 	window.Gfx().SetView(DirectX::XMMatrixIdentity());
 
-	constexpr float FIELD = 7.85f, POS = 3.0f, SIZE = 2.7f;
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(-POS, POS, FIELD), "0", "empty.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(0.0f, POS, FIELD), "1", "p1.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(POS, POS, FIELD), "2", "p2.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(-POS, 0.0f, FIELD), "3", "p1.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(0.0f, 0.0f, FIELD), "4", "p2.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(POS, 0.0f, FIELD), "5", "empty.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(-POS, -POS, FIELD), "6", "empty.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(0.0f, -POS, FIELD), "7", "empty.png", SIZE, SIZE));
-	fields.emplace_back(std::make_shared<GFX::Shape::Rectangle>(window.Gfx(), renderer, DirectX::XMFLOAT3(POS, -POS, FIELD), "8", "empty.png", SIZE, SIZE));
+	uint8_t tag = 0;
+	fields.reserve(9);
+	for (short y = -1; y < 2; ++y)
+		for (short x = -1; x < 2; ++x)
+			fields.emplace_back(window.Gfx(), renderer, std::to_string(tag++), x, y);
 }
 
 size_t App::Run()
 {
+	timer.Mark();
 	while (run)
 	{
 		if (const auto status = WinAPI::Window::ProcessMessage())
 			return status.value();
 		MakeFrame();
+		if (play)
+			time += timer.Mark();
 	}
 	return 0U;
 }

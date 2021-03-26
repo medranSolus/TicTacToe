@@ -113,28 +113,4 @@ namespace GFX::Pipeline
 		this->radius = radius;
 		SetKernel();
 	}
-
-	void MainPipelineGraph::ShowWindow(Graphics& gfx)
-	{
-		if (ImGui::CollapsingHeader("Outline"))
-		{
-			ImGui::Columns(2, "##outline_options", false);
-			ImGui::Text("Blur radius");
-			ImGui::SetNextItemWidth(-1.0f);
-			bool change = ImGui::SliderInt("##blur_radius", &radius, 1, MAX_RADIUS);
-			ImGui::NextColumn();
-			ImGui::Text("Outline range");
-			ImGui::SetNextItemWidth(-1.0f);
-			if (change || ImGui::InputFloat("##blur_sigma", &sigma, 0.1f, 0.0f, "%.1f"))
-			{
-				if (sigma < 0.1f)
-					sigma = 0.1f;
-				else if (sigma > 25.0f)
-					sigma = 25.0f;
-				SetKernel();
-			}
-			dynamic_cast<RenderPass::OutlineDrawBlurPass&>(FindPass("outlineDrawBlur")).ShowWindow();
-			ImGui::Columns(1);
-		}
-	}
 }

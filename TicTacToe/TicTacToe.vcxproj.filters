@@ -357,6 +357,9 @@
     <ClCompile Include="Blender.cpp">
       <Filter>Source Files\GFX\Resource</Filter>
     </ClCompile>
+    <ClCompile Include="Field.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="TexPS.hlsl">
@@ -723,6 +726,9 @@
     </ClInclude>
     <ClInclude Include="VertexBufferData.h">
       <Filter>Header Files\GFX\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Field.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

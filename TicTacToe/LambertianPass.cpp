@@ -12,7 +12,7 @@ namespace GFX::Pipeline::RenderPass
 		RegisterSource(Base::SourceDirectBuffer<Resource::RenderTarget>::Make("renderTarget", renderTarget));
 
 		AddBind(GFX::Resource::DepthStencilState::Get(gfx, GFX::Resource::DepthStencilState::StencilMode::Off));
-		AddBind(GFX::Resource::Rasterizer::Get(gfx, D3D11_CULL_NONE));
+		AddBind(GFX::Resource::Rasterizer::Get(gfx, D3D11_CULL_BACK));
 		AddBind(GFX::Resource::Blender::Get(gfx, GFX::Resource::Blender::Type::None));
 	}
 }

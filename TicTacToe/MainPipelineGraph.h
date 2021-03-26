@@ -24,6 +24,5 @@ namespace GFX::Pipeline
 		virtual ~MainPipelineGraph() = default;
 
 		void SetKernel(int radius, float sigma) noexcept(!IS_DEBUG);
-		void ShowWindow(Graphics& gfx);
 	};
 }

@@ -28,7 +28,7 @@ namespace GFX::GUI
 	{
 		std::vector<std::filesystem::directory_entry> dirContent;
 		for (const auto& entry : std::filesystem::directory_iterator(entry, std::filesystem::directory_options::skip_permission_denied))
-			if (Surface::IsImage(entry.path().extension().string()))
+			if (Surface::IsImage(entry.path().extension().string()) || entry.is_directory())
 				dirContent.emplace_back(entry);
 		std::sort(dirContent.begin(), dirContent.end(), [](const std::filesystem::directory_entry& e1, const std::filesystem::directory_entry& e2)
 			{
@@ -48,7 +48,7 @@ namespace GFX::GUI
 		static size_t selected;
 		if (ImGui::Button(title.c_str()))
 		{
-			currentDir = std::move(std::filesystem::directory_entry(std::filesystem::current_path().string() + "\\" + startDir));
+			currentDir = std::filesystem::directory_entry(std::filesystem::current_path().string() + (startDir.size() ? "\\" + startDir : ""));
 			selected = -1;
 			if (drives.size() == 0)
 				SetupDrives();
@@ -59,20 +59,20 @@ namespace GFX::GUI
 		ImGui::SetNextWindowPos({ ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f },
 			ImGuiCond_Appearing, { 0.5f, 0.5f });
 		std::string selectFile = "";
-		if (ImGui::BeginPopupModal(title.c_str(), nullptr/*, ImGuiWindowFlags_NoMove*/))
+		if (ImGui::BeginPopupModal(title.c_str()))
 		{
 			if (!currentDir.exists())
-				currentDir = std::move(std::filesystem::directory_entry(std::filesystem::current_path()));
+				currentDir = std::filesystem::directory_entry(std::filesystem::current_path());
 			std::vector<std::filesystem::directory_entry> dirContent = std::move(GetDirContent(currentDir));
 
 			if (ImGui::Button(" ^ "))
 			{
-				currentDir = std::move(std::filesystem::directory_entry(currentDir.path().parent_path()));
+				currentDir = std::filesystem::directory_entry(currentDir.path().parent_path());
 				selected = -1;
 			}
 			ImGui::SameLine();
 			std::string driveLetter = currentDir.path().root_name().string();
-			ImGui::SetNextItemWidth(40.0f);
+			ImGui::SetNextItemWidth(70.0f);
 			if (ImGui::BeginCombo("##dialog_drive", currentDir.path().root_name().string().c_str()))
 			{
 				for (const auto& letter : drives)
@@ -87,14 +87,14 @@ namespace GFX::GUI
 			}
 			ImGui::SameLine();
 
-			ImGui::BeginChild("##dialog_path", { -1.0f, 34.0f }, false, ImGuiWindowFlags_HorizontalScrollbar);
+			ImGui::BeginChild("##dialog_path", { -1.0f, 49.0f }, false, ImGuiWindowFlags_HorizontalScrollbar);
 			ImGui::Dummy({ 0.0f, 0.0f });
 			auto path = currentDir.path().wstring();
 			path.erase(path.begin(), path.begin() + 3);
 			ImGui::Text(Utils::ToAscii(path).c_str());
 			ImGui::EndChild();
 
-			ImGui::BeginChild("##dialog_content", { -1.0f, -35.0f }, true);
+			ImGui::BeginChild("##dialog_content", { -1.0f, -55.0f }, true);
 			for (size_t i = 0, size = dirContent.size(); i < size; ++i)
 			{
 				if (ImGui::Selectable(Utils::ToAscii(dirContent.at(i).path().filename().wstring()).c_str(), selected == i, ImGuiSelectableFlags_AllowDoubleClick))
@@ -113,18 +113,18 @@ namespace GFX::GUI
 			}
 			ImGui::EndChild();
 
-			ImGui::BeginChild("##dialog_selected", { -107.0f, 30.0f }, true);
+			ImGui::BeginChild("##dialog_selected", { -193.0f, 50.0f }, true);
 			if (selected != -1)
 				ImGui::Text(Utils::ToAscii(dirContent.at(selected).path().filename().wstring()).c_str());
 			ImGui::EndChild();
 			ImGui::SameLine();
-			if (ImGui::Button("Select", { 0.0f, 30.0f }) && selected != -1)
+			if (ImGui::Button("Select", { 0.0f, 50.0f }) && selected != -1)
 			{
 				selectFile = Utils::ToAscii(dirContent.at(selected).path().wstring());
 				ImGui::CloseCurrentPopup();
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("Cancel", { 0.0f, 30.0f }))
+			if (ImGui::Button("Cancel", { 0.0f, 50.0f }))
 				ImGui::CloseCurrentPopup();
 			ImGui::EndPopup();
 		}

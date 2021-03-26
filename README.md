@@ -10,6 +10,9 @@ Game based on subset of [Horus Engine v0.1](https://github.com/medranSolus/Horus
   - [Dear ImGui 1.78](https://github.com/ocornut/imgui)
 
 ## Screens
-![Game](Screens/GameScreen.png "Main game")
 
-![Win](Screens/WinScreen.png "Player wins")
+### Main game
+![Game](Screens/GameScreen.png)
+
+### Player wins
+![Win](Screens/WinScreen.png)
